@@ -4,15 +4,16 @@ import os
 import zipfile
 from io import BytesIO
 from PIL import Image
-from model import load_model, predict_image
+from model import load_model, predict_image, load_openvino_model, predict_image_openvino
 
 app = FastAPI()
 
 UPLOAD_DIR = "uploaded_images"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Load model at startup
+# Load models at startup
 load_model()
+load_openvino_model()
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -45,9 +46,20 @@ async def upload_file(file: UploadFile = File(...)):
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
+    """uses PyTorch for CPU inference"""
     if not (file.filename.lower().endswith('.png') or file.filename.lower().endswith('.jpg') or file.filename.lower().endswith('.jpeg')):
         return JSONResponse(status_code=400, content={"error": "Only image files (.png, .jpg, .jpeg) are allowed."})
     
     contents = await file.read()
     result = predict_image(contents)
+    return result
+
+@app.post("/predict_opt")
+async def predict_optimized(file: UploadFile = File(...)):
+    """uses OpenVINO for optimized CPU inference """
+    if not (file.filename.lower().endswith('.png') or file.filename.lower().endswith('.jpg') or file.filename.lower().endswith('.jpeg')):
+        return JSONResponse(status_code=400, content={"error": "Only image files (.png, .jpg, .jpeg) are allowed."})
+    
+    contents = await file.read()
+    result = predict_image_openvino(contents)
     return result 
