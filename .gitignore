@@ -207,3 +207,9 @@ backend/uploaded_images/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Frontend 
+frontend/node_modules/
+frontend/build/
+frontend/package-lock.json
+
