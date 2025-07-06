@@ -11,7 +11,7 @@ const ImageStackViewer = ({ filenames, resolutions }) => {
       setLoading(true);
       const imagePromises = filenames.map(async (filename) => {
         try {
-          const response = await fetch(`/uploaded_images/${filename}`);
+          const response = await fetch(`http://localhost:8000/uploaded_images/${filename}`);
           if (response.ok) {
             const blob = await response.blob();
             return {
