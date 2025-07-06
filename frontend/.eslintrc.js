@@ -1,7 +1,6 @@
 module.exports = {
   extends: [
-    'react-app',
-    'react-app/jest'
+    'react-app'
   ],
   env: {
     browser: true,
@@ -20,13 +19,5 @@ module.exports = {
   ],
   rules: {
     // Add any custom rules here if needed
-  },
-  overrides: [
-    {
-      files: ['**/*.test.js', '**/*.test.jsx', '**/*.spec.js', '**/*.spec.jsx'],
-      env: {
-        jest: true
-      }
-    }
-  ]
+  }
 }; 
