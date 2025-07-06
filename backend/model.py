@@ -5,6 +5,7 @@ from PIL import Image
 from io import BytesIO
 import openvino as ov
 import numpy as np
+import os
 
 # ImageNet class labels
 IMAGENET_LABELS = [
@@ -90,57 +91,84 @@ def predict_image(image_bytes):
         "confidence": float(confidence.item())
     }
 
-def predict_image_openvino(image_bytes):
-    """Predict the class and confidence for an image using OpenVINO runtime"""
+    
+def predict_batch_openvino(image_files):
+    """Predict the class and confidence for multiple images using OpenVINO runtime concurrently"""
     global ov_compiled_model, ov_transform
     
     # Ensure OpenVINO model is loaded
     if ov_compiled_model is None or ov_transform is None:
         load_openvino_model()
     
-    # Load and preprocess image
-    img = Image.open(BytesIO(image_bytes)).convert('RGB')
-    input_tensor = ov_transform(img).unsqueeze(0)  # Add batch dimension
+    results = []
     
-    # Convert to numpy array for OpenVINO
-    input_array = input_tensor.numpy()
+    for filename in image_files:
+        try:
+            # Load image from file
+            image_path = os.path.join("uploaded_images", filename)
+            if not os.path.exists(image_path):
+                results.append({
+                    "filename": filename,
+                    "class": "error",
+                    "confidence": 0.0,
+                    "error": "File not found"
+                })
+                continue
+            
+            # Load and preprocess image
+            img = Image.open(image_path).convert('RGB')
+            input_tensor = ov_transform(img).unsqueeze(0)  # Add batch dimension
+            
+            # Convert to numpy array for OpenVINO
+            input_array = input_tensor.numpy()
+            
+            # Make prediction using OpenVINO
+            prediction_results = ov_compiled_model(input_array)
+            
+            # Get the output (assuming single output)
+            output = prediction_results[ov_compiled_model.output(0)]
+            
+            # Ensure output is 1D array with 1000 classes
+            if output.ndim > 1:
+                output = output.flatten()
+            
+            # Check if output has the expected number of classes
+            if len(output) != 1000:
+                # If output is too small, pad with zeros
+                if len(output) < 1000:
+                    padded_output = np.zeros(1000)
+                    padded_output[:len(output)] = output
+                    output = padded_output
+                # If output is too large, truncate
+                else:
+                    output = output[:1000]
+            
+            # Apply softmax to get probabilities
+            exp_output = np.exp(output - np.max(output))
+            probabilities = exp_output / np.sum(exp_output)
+            
+            # Get the predicted class and confidence
+            predicted_idx = np.argmax(probabilities)
+            confidence = probabilities[predicted_idx]
+            
+            # Ensure predicted_idx is within bounds
+            if predicted_idx >= len(IMAGENET_LABELS):
+                predicted_idx = 0  # Default to first class if out of bounds
+            
+            class_label = IMAGENET_LABELS[predicted_idx]
+            
+            results.append({
+                "filename": filename,
+                "class": class_label,
+                "confidence": float(confidence)
+            })
+            
+        except Exception as e:
+            results.append({
+                "filename": filename,
+                "class": "error",
+                "confidence": 0.0,
+                "error": str(e)
+            })
     
-    # Make prediction using OpenVINO
-    results = ov_compiled_model(input_array)
-    
-    # Get the output (assuming single output)
-    output = results[ov_compiled_model.output(0)]
-    
-    # Ensure output is 1D array with 1000 classes
-    if output.ndim > 1:
-        output = output.flatten()
-    
-    # Check if output has the expected number of classes
-    if len(output) != 1000:
-        # If output is too small, pad with zeros
-        if len(output) < 1000:
-            padded_output = np.zeros(1000)
-            padded_output[:len(output)] = output
-            output = padded_output
-        # If output is too large, truncate
-        else:
-            output = output[:1000]
-    
-    # Apply softmax to get probabilities
-    exp_output = np.exp(output - np.max(output))
-    probabilities = exp_output / np.sum(exp_output)
-    
-    # Get the predicted class and confidence
-    predicted_idx = np.argmax(probabilities)
-    confidence = probabilities[predicted_idx]
-    
-    # Ensure predicted_idx is within bounds
-    if predicted_idx >= len(IMAGENET_LABELS):
-        predicted_idx = 0  # Default to first class if out of bounds
-    
-    class_label = IMAGENET_LABELS[predicted_idx]
-    
-    return {
-        "class_label": class_label,
-        "confidence": float(confidence)
-    } 
+    return results 
