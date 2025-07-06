@@ -7,6 +7,8 @@ function App() {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const [error, setError] = useState(null);
+  const [inferenceResults, setInferenceResults] = useState(null);
+  const [runningInference, setRunningInference] = useState(false);
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -46,6 +48,32 @@ function App() {
       setError(err.response?.data?.error || 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleInference = async () => {
+    if (!uploadResult || !uploadResult.filenames) {
+      setError('No images available for inference');
+      return;
+    }
+
+    setRunningInference(true);
+    setError(null);
+
+    try {
+      const response = await axios.post('http://localhost:8000/predict_opt', {
+        filenames: uploadResult.filenames
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      setInferenceResults(response.data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Inference failed. Please try again.');
+    } finally {
+      setRunningInference(false);
     }
   };
 
@@ -113,7 +141,48 @@ function App() {
           <ImageStackViewer 
             filenames={uploadResult.filenames}
             resolutions={uploadResult.resolutions}
+            inferenceResults={inferenceResults}
           />
+        )}
+
+        {/* Inference Section */}
+        {uploadResult && (
+          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 className="text-2xl font-semibold text-gray-700 mb-4">
+              Run Inference
+            </h2>
+            
+            <div className="space-y-4">
+              <button
+                onClick={handleInference}
+                disabled={runningInference}
+                className={`w-full py-2 px-4 rounded-md font-medium transition-colors ${
+                  runningInference
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {runningInference ? 'Running Inference...' : 'Run Inference on All Images'}
+              </button>
+
+              {/* Inference Results */}
+              {inferenceResults && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md">
+                  <p className="font-medium mb-2">Inference Results:</p>
+                  <div className="space-y-2">
+                    {inferenceResults.map((result, index) => (
+                      <div key={index} className="flex justify-between items-center">
+                        <span className="font-medium">{result.filename}:</span>
+                        <span>
+                          {result.class} ({Math.round(result.confidence * 100)}%)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

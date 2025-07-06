@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const ImageStackViewer = ({ filenames, resolutions }) => {
+const ImageStackViewer = ({ filenames, resolutions, inferenceResults }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +34,29 @@ const ImageStackViewer = ({ filenames, resolutions }) => {
 
     loadImages();
   }, [filenames, resolutions]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (event) => {
+      if (images.length === 0) return;
+      
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          prevImage();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          nextImage();
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [images.length]);
 
   const nextImage = () => {
     setCurrentIndex((prev) => (prev + 1) % images.length);
@@ -117,6 +140,36 @@ const ImageStackViewer = ({ filenames, resolutions }) => {
           </div>
         </div>
       </div>
+
+      {/* Inference Results for Current Image */}
+      {inferenceResults && (
+        <div className="mb-6">
+          <h3 className="text-lg font-medium text-gray-700 mb-3">Inference Result</h3>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            {(() => {
+              const result = inferenceResults.find(r => r.filename === currentImage.filename);
+              if (result) {
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="font-medium text-gray-700">Class:</span>
+                      <p className="text-blue-600 font-semibold">{result.class}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Confidence:</span>
+                      <p className="text-blue-600 font-semibold">{Math.round(result.confidence * 100)}%</p>
+                    </div>
+                  </div>
+                );
+              } else {
+                return (
+                  <p className="text-gray-500">No inference result available for this image</p>
+                );
+              }
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Thumbnail Navigation */}
       <div className="mb-4">
