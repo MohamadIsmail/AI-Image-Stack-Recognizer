@@ -51,9 +51,9 @@ function App() {
     }
   };
 
-  const handleInference = async () => {
-    if (!uploadResult || !uploadResult.filenames) {
-      setError('No images available for inference');
+  const handleInferenceSelected = async (selectedFilenames) => {
+    if (!selectedFilenames || selectedFilenames.length === 0) {
+      setError('No images selected for inference');
       return;
     }
 
@@ -62,7 +62,7 @@ function App() {
 
     try {
       const response = await axios.post('http://localhost:8000/predict_opt_batch', {
-        filenames: uploadResult.filenames
+        filenames: selectedFilenames
       }, {
         headers: {
           'Content-Type': 'application/json',
@@ -142,47 +142,8 @@ function App() {
             filenames={uploadResult.filenames}
             resolutions={uploadResult.resolutions}
             inferenceResults={inferenceResults}
+            onRunInference={handleInferenceSelected}
           />
-        )}
-
-        {/* Inference Section */}
-        {uploadResult && (
-          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-2xl font-semibold text-gray-700 mb-4">
-              Run Inference
-            </h2>
-            
-            <div className="space-y-4">
-              <button
-                onClick={handleInference}
-                disabled={runningInference}
-                className={`w-full py-2 px-4 rounded-md font-medium transition-colors ${
-                  runningInference
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
-              >
-                {runningInference ? 'Running Inference...' : 'Run Inference on All Images'}
-              </button>
-
-              {/* Inference Results */}
-              {inferenceResults && (
-                <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md">
-                  <p className="font-medium mb-2">Inference Results:</p>
-                  <div className="space-y-2">
-                    {inferenceResults.map((result, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <span className="font-medium">{result.filename}:</span>
-                        <span>
-                          {result.class} ({Math.round(result.confidence * 100)}%)
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         )}
       </div>
     </div>
