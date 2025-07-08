@@ -5,6 +5,8 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedImages, setSelectedImages] = useState([]);
+  // Zoom state
+  const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
     // Load images from the backend
@@ -88,6 +90,11 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
     setSelectedImages([]);
   };
 
+  // Zoom handlers
+  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.25, 5));
+  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.25, 0.25));
+  const handleResetZoom = () => setZoom(1);
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6">
@@ -135,11 +142,37 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
       </div>
       {/* Image Display */}
       <div className="relative mb-6">
+        {/* Zoom Controls */}
+        <div className="absolute top-2 right-2 z-10 flex gap-2 bg-white bg-opacity-80 rounded p-1 shadow">
+          <button
+            onClick={handleZoomOut}
+            className="px-2 py-1 text-lg font-bold bg-gray-200 rounded hover:bg-gray-300"
+            title="Zoom Out"
+          >
+            −
+          </button>
+          <span className="px-2 py-1 text-sm font-mono">{(zoom * 100).toFixed(0)}%</span>
+          <button
+            onClick={handleZoomIn}
+            className="px-2 py-1 text-lg font-bold bg-gray-200 rounded hover:bg-gray-300"
+            title="Zoom In"
+          >
+            +
+          </button>
+          <button
+            onClick={handleResetZoom}
+            className="px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
+            title="Reset Zoom"
+          >
+            Reset
+          </button>
+        </div>
         <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
           <img
             src={currentImage.src}
             alt={currentImage.filename}
-            className="max-w-full max-h-full object-contain"
+            className="max-w-full max-h-full object-contain transition-transform duration-200"
+            style={{ transform: `scale(${zoom})` }}
           />
         </div>
         
