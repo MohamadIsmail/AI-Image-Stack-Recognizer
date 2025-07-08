@@ -91,9 +91,18 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
   };
 
   // Zoom handlers
-  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.25, 5));
-  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.25, 0.25));
+  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.05, 5));
+  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.05, 0.25));
   const handleResetZoom = () => setZoom(1);
+  const handleSliderChange = (e) => setZoom(Number(e.target.value));
+  const handleZoomInputChange = (e) => {
+    let val = parseFloat(e.target.value.replace(/[^0-9.]/g, ''));
+    if (isNaN(val)) val = 100;
+    setZoom(Math.max(0.25, Math.min(val / 100, 5)));
+  };
+  const handleZoomInputBlur = (e) => {
+    if (!e.target.value) setZoom(1);
+  };
 
   if (loading) {
     return (
@@ -143,26 +152,52 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
       {/* Image Display */}
       <div className="relative mb-6">
         {/* Zoom Controls */}
-        <div className="absolute top-2 right-2 z-10 flex gap-2 bg-white bg-opacity-80 rounded p-1 shadow">
+        <div className="absolute top-2 right-2 z-10 flex gap-2 items-center bg-white bg-opacity-80 rounded p-2 shadow">
+          {/* Zoom Out Button */}
           <button
             onClick={handleZoomOut}
-            className="px-2 py-1 text-lg font-bold bg-gray-200 rounded hover:bg-gray-300"
+            className="px-2 py-1 text-lg font-bold bg-gray-200 rounded hover:bg-gray-300 flex items-center"
             title="Zoom Out"
+            style={{ minWidth: 32 }}
           >
-            −
+            <span role="img" aria-label="Zoom Out">🔍−</span>
           </button>
-          <span className="px-2 py-1 text-sm font-mono">{(zoom * 100).toFixed(0)}%</span>
+          {/* Zoom Slider */}
+          <input
+            type="range"
+            min={0.25}
+            max={5}
+            step={0.01}
+            value={zoom}
+            onChange={handleSliderChange}
+            className="w-32 mx-2 accent-blue-600"
+            title="Zoom Slider"
+          />
+          {/* Zoom In Button */}
           <button
             onClick={handleZoomIn}
-            className="px-2 py-1 text-lg font-bold bg-gray-200 rounded hover:bg-gray-300"
+            className="px-2 py-1 text-lg font-bold bg-gray-200 rounded hover:bg-gray-300 flex items-center"
             title="Zoom In"
+            style={{ minWidth: 32 }}
           >
-            +
+            <span role="img" aria-label="Zoom In">🔍＋</span>
           </button>
+          {/* Zoom Percentage Input */}
+          <input
+            type="text"
+            value={`${Math.round(zoom * 100)}`}
+            onChange={handleZoomInputChange}
+            onBlur={handleZoomInputBlur}
+            className="w-14 text-center border border-gray-300 rounded px-1 py-0.5 mx-2 text-sm"
+            style={{ width: 48 }}
+            title="Zoom Percentage"
+          />
+          <span className="text-sm text-gray-600">%</span>
+          {/* Reset Button */}
           <button
             onClick={handleResetZoom}
-            className="px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200"
-            title="Reset Zoom"
+            className="px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200 ml-2"
+            title="Fit to Screen / Reset Zoom"
           >
             Reset
           </button>
