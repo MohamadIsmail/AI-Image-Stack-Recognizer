@@ -7,6 +7,11 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
   const [selectedImages, setSelectedImages] = useState([]);
   // Zoom state
   const [zoom, setZoom] = useState(1);
+  // Rotate state
+  const [rotate, setRotate] = useState(0);
+  const handleRotateLeft = () => setRotate((r) => (r - 90 + 360) % 360);
+  const handleRotateRight = () => setRotate((r) => (r + 90) % 360);
+  const handleRotateReset = () => setRotate(0);
 
   useEffect(() => {
     // Load images from the backend
@@ -151,8 +156,24 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
       </div>
       {/* Image Display */}
       <div className="relative mb-6">
-        {/* Zoom Controls */}
+        {/* Zoom & Rotate Controls */}
         <div className="absolute top-2 right-2 z-10 flex gap-2 items-center bg-white bg-opacity-80 rounded p-2 shadow">
+          {/* Rotate Left */}
+          <button
+            onClick={handleRotateLeft}
+            className="px-2 py-1 text-lg font-bold bg-gray-200 rounded hover:bg-gray-300"
+            title="Rotate Left"
+          >
+            ⟲
+          </button>
+          {/* Rotate Right */}
+          <button
+            onClick={handleRotateRight}
+            className="px-2 py-1 text-lg font-bold bg-gray-200 rounded hover:bg-gray-300"
+            title="Rotate Right"
+          >
+            ⟳
+          </button>
           {/* Zoom Out Button */}
           <button
             onClick={handleZoomOut}
@@ -193,21 +214,22 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
             title="Zoom Percentage"
           />
           <span className="text-sm text-gray-600">%</span>
-          {/* Reset Button */}
+          {/* Reset All Button */}
           <button
-            onClick={handleResetZoom}
+            onClick={() => { handleResetZoom(); handleRotateReset(); }}
             className="px-2 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200 ml-2"
-            title="Fit to Screen / Reset Zoom"
+            title="Reset Zoom & Rotation"
           >
             Reset
           </button>
+          <span className="text-sm text-gray-600 ml-2">{rotate}&deg;</span>
         </div>
-        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+        <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center select-none">
           <img
             src={currentImage.src}
             alt={currentImage.filename}
             className="max-w-full max-h-full object-contain transition-transform duration-200"
-            style={{ transform: `scale(${zoom})` }}
+            style={{ transform: `scale(${zoom}) rotate(${rotate}deg)` }}
           />
         </div>
         
