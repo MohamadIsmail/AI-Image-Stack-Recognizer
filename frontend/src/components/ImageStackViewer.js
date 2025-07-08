@@ -154,7 +154,7 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
           {selectedImages.length} selected
         </span>
       </div>
-      {/* Image Display */}
+      {/* Main active image display (for keyboard navigation, zoom, rotate, etc.) */}
       <div className="relative mb-6">
         {/* Zoom & Rotate Controls */}
         <div className="absolute top-2 right-2 z-10 flex gap-2 items-center bg-white bg-opacity-80 rounded p-2 shadow">
@@ -232,20 +232,45 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
             style={{ transform: `scale(${zoom}) rotate(${rotate}deg)` }}
           />
         </div>
-        
-        {/* Navigation Buttons */}
-        <button
-          onClick={prevImage}
-          className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-opacity"
-        >
-          ←
-        </button>
-        <button
-          onClick={nextImage}
-          className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-opacity"
-        >
-          →
-        </button>
+      </div>
+      {/* Thumbnail strip */}
+      <div className="flex overflow-x-auto gap-2 py-2 mb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+        {images.map((img, idx) => (
+          <div
+            key={img.filename}
+            className={`flex-shrink-0 w-20 h-20 rounded border-2 cursor-pointer relative ${idx === currentIndex ? 'border-blue-500' : 'border-transparent'}`}
+            style={{ background: '#f3f4f6' }}
+            onClick={() => setCurrentIndex(idx)}
+          >
+            <img
+              src={img.src}
+              alt={img.filename}
+              className="w-full h-full object-contain rounded"
+              style={{ opacity: idx === currentIndex ? 1 : 0.7 }}
+            />
+            {/* Selection Checkbox */}
+            <input
+              type="checkbox"
+              checked={selectedImages.includes(img.filename)}
+              onChange={() => toggleSelectImage(img.filename)}
+              className="absolute top-1 left-1 w-4 h-4 accent-blue-600 bg-white rounded border border-gray-300"
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+        ))}
+      </div>
+      {/* Slider for image navigation */}
+      <div className="flex items-center gap-4 mb-6">
+        <span className="text-sm text-gray-600">Image</span>
+        <input
+          type="range"
+          min={0}
+          max={images.length - 1}
+          value={currentIndex}
+          onChange={e => setCurrentIndex(Number(e.target.value))}
+          className="flex-1 accent-blue-600"
+        />
+        <span className="text-sm text-gray-600">{currentIndex + 1} / {images.length}</span>
       </div>
 
       {/* Image Info */}
@@ -305,40 +330,6 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
         >
           Run Inference on Selected
         </button>
-      </div>
-
-      {/* Thumbnail Navigation */}
-      <div className="mb-4">
-        <h3 className="text-lg font-medium text-gray-700 mb-3">Thumbnails</h3>
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {images.map((image, index) => (
-            <div key={index} className="relative flex-shrink-0">
-              <button
-                onClick={() => goToImage(index)}
-                className={`w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors focus:outline-none ${
-                  index === currentIndex
-                    ? 'border-blue-500'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <img
-                  src={image.src}
-                  alt={image.filename}
-                  className="w-full h-full object-cover"
-                />
-                {/* Selection Checkbox Overlay */}
-                <input
-                  type="checkbox"
-                  checked={selectedImages.includes(image.filename)}
-                  onChange={() => toggleSelectImage(image.filename)}
-                  className="absolute top-1 left-1 w-4 h-4 bg-white bg-opacity-80 rounded border border-gray-400 cursor-pointer z-10"
-                  onClick={e => e.stopPropagation()}
-                  aria-label={`Select image ${image.filename}`}
-                />
-              </button>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Keyboard Navigation Info */}
