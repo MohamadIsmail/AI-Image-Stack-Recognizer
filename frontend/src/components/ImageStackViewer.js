@@ -328,7 +328,7 @@ const ImageStackViewer = ({ filenames, resolutions, inferenceResults, onRunInfer
           disabled={selectedImages.length === 0}
           className={`px-4 py-2 rounded bg-blue-600 text-white font-semibold shadow hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed`}
         >
-          Run Inference on Selected
+          Run Inference on Selected Images
         </button>
       </div>
 
