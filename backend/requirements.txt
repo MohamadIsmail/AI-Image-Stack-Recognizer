@@ -3,4 +3,5 @@ uvicorn
 Pillow 
 torch
 torchvision
-openvino 
+openvino
+python-multipart
