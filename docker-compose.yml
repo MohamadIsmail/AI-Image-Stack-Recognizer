@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: ai-image-stack-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/uploaded_images:/app/uploaded_images
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: ai-image-stack-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+# Usage:
+# docker-compose up --build
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:8000 
