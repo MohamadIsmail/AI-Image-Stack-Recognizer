@@ -140,10 +140,12 @@ The frontend communicates with the backend API:
 - Request body (JSON):
   ```json
   {
-    "filenames": ["image1.png", "image2.png"]
+    "filenames": ["image1.png", "image2.png"],
+    "batch_size": 16
   }
   ```
   - `filenames`: List of image filenames (from the uploaded stack) to run inference on. Can be a single filename or multiple.
+  - `batch_size` (optional): Number of images to process at once in each mini-batch. If not provided, the backend will auto-detect the optimal batch size for your system.
 - Response: List of results for each filename, e.g.
   ```json
   [
@@ -159,10 +161,12 @@ The frontend communicates with the backend API:
 - Request body (JSON):
   ```json
   {
-    "filenames": ["image1.png", "image2.png"]
+    "filenames": ["image1.png", "image2.png"],
+    "batch_size": 16
   }
   ```
   - `filenames`: List of image filenames (from the uploaded stack) to run inference on. Can be a single filename or multiple.
+  - `batch_size` (optional): Number of images to process at once in each mini-batch. If not provided, the backend will auto-detect the optimal batch size for your system.
 - Response: List of results for each filename, e.g.
   ```json
   [

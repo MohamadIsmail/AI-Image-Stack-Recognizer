@@ -92,114 +92,133 @@ def predict_image(image_bytes):
     }
 
     
-def predict_batch_openvino(image_files):
-    """Predict the class and confidence for multiple images using OpenVINO runtime concurrently"""
+def predict_batch_openvino(image_files, batch_size=None):
+    """Optimized: Predict the class and confidence for multiple images using OpenVINO runtime in mini-batches.
+    If batch_size is None, auto-detect an optimal batch size based on CPU count (min(16, max(1, os.cpu_count() or 8)))."""
     global ov_compiled_model, ov_transform
-    
+
+    # Auto-detect batch size if not provided
+    if batch_size is None:
+        cpu_count = os.cpu_count() or 8
+        batch_size = min(16, max(1, cpu_count))
+
     # Ensure OpenVINO model is loaded
     if ov_compiled_model is None or ov_transform is None:
         load_openvino_model()
-    
-    results = []
-    
-    for filename in image_files:
-        try:
-            # Load image from file
-            image_path = os.path.join("uploaded_images", filename)
-            if not os.path.exists(image_path):
-                results.append({
-                    "filename": filename,
-                    "class": "error",
-                    "confidence": 0.0,
-                    "error": "File not found"
-                })
-                continue
-            
-            # Load and preprocess image
-            img = Image.open(image_path).convert('RGB')
-            input_tensor = ov_transform(img).unsqueeze(0)  # Add batch dimension
-            
-            # Convert to numpy array for OpenVINO
-            input_array = input_tensor.numpy()
-            
-            # Make prediction using OpenVINO
-            prediction_results = ov_compiled_model(input_array)
-            
-            # Get the output (assuming single output)
-            output = prediction_results[ov_compiled_model.output(0)]
-            
-            # Ensure output is 1D array with 1000 classes
-            if output.ndim > 1:
-                output = output.flatten()
-            
-            # Check if output has the expected number of classes
-            if len(output) != 1000:
-                # If output is too small, pad with zeros
-                if len(output) < 1000:
-                    padded_output = np.zeros(1000)
-                    padded_output[:len(output)] = output
-                    output = padded_output
-                # If output is too large, truncate
-                else:
-                    output = output[:1000]
-            
-            # Apply softmax to get probabilities
-            exp_output = np.exp(output - np.max(output))
-            probabilities = exp_output / np.sum(exp_output)
-            
-            # Get the predicted class and confidence
-            predicted_idx = np.argmax(probabilities)
-            confidence = probabilities[predicted_idx]
-            
-            # Ensure predicted_idx is within bounds
-            if predicted_idx >= len(IMAGENET_LABELS):
-                predicted_idx = 0  # Default to first class if out of bounds
-            
-            class_label = IMAGENET_LABELS[predicted_idx]
-            
-            results.append({
-                "filename": filename,
-                "class": class_label,
-                "confidence": float(confidence)
-            })
-            
-        except Exception as e:
-            results.append({
-                "filename": filename,
-                "class": "error",
-                "confidence": 0.0,
-                "error": str(e)
-            })
-    
-    return results 
 
-def predict_batch_pytorch(image_files):
-    """Predict the class and confidence for multiple images using PyTorch (CPU)"""
     results = []
-    for filename in image_files:
-        try:
+    errors = {}
+    N = len(image_files)
+    for start in range(0, N, batch_size):
+        batch_filenames = image_files[start:start+batch_size]
+        batch_tensors = []
+        valid_filenames = []
+        # Load and preprocess this mini-batch
+        for filename in batch_filenames:
             image_path = os.path.join("uploaded_images", filename)
             if not os.path.exists(image_path):
-                results.append({
+                errors[filename] = {
                     "filename": filename,
                     "class": "error",
                     "confidence": 0.0,
                     "error": "File not found"
-                })
+                }
                 continue
-            with open(image_path, "rb") as f:
-                image_bytes = f.read()
-            pred = predict_image(image_bytes)
-            results.append({
-                "filename": filename,
-                "class": pred.get("class_label", "error"),
-                "confidence": pred.get("confidence", 0.0)
-            })
-        except Exception as e:
-            results.append({
-                "filename": filename,
-                "class": "error",
-                "confidence": 0.0,
-                "error": str(e)
-            })
+            try:
+                img = Image.open(image_path).convert('RGB')
+                input_tensor = ov_transform(img).unsqueeze(0)  # (1, 3, 224, 224)
+                batch_tensors.append(input_tensor.numpy())
+                valid_filenames.append(filename)
+            except Exception as e:
+                errors[filename] = {
+                    "filename": filename,
+                    "class": "error",
+                    "confidence": 0.0,
+                    "error": str(e)
+                }
+        if batch_tensors:
+            batch_array = np.vstack(batch_tensors)  # (B, 3, 224, 224)
+            prediction_results = ov_compiled_model(batch_array)
+            output = prediction_results[ov_compiled_model.output(0)]  # (B, 1000)
+            exp_output = np.exp(output - np.max(output, axis=1, keepdims=True))
+            probabilities = exp_output / np.sum(exp_output, axis=1, keepdims=True)
+            for i, filename in enumerate(valid_filenames):
+                probs = probabilities[i]
+                predicted_idx = np.argmax(probs)
+                confidence = probs[predicted_idx]
+                class_label = IMAGENET_LABELS[predicted_idx] if predicted_idx < len(IMAGENET_LABELS) else str(predicted_idx)
+                results.append({
+                    "filename": filename,
+                    "class": class_label,
+                    "confidence": float(confidence)
+                })
+    # Add errors for any failed images
+    for filename in image_files:
+        if filename in errors:
+            results.append(errors[filename])
+    return results
+
+def predict_batch_pytorch(image_files, batch_size=None):
+    """Predict the class and confidence for multiple images using PyTorch (CPU) in mini-batches.
+    If batch_size is None, auto-detect an optimal batch size based on CPU count (min(16, max(1, os.cpu_count() or 8)))."""
+    global model, transform
+
+    # Auto-detect batch size if not provided
+    if batch_size is None:
+        cpu_count = os.cpu_count() or 8
+        batch_size = min(16, max(1, cpu_count))
+
+    # Ensure model and transform are loaded
+    if model is None or transform is None:
+        load_model()
+
+    results = []
+    errors = {}
+    N = len(image_files)
+    for start in range(0, N, batch_size):
+        batch_filenames = image_files[start:start+batch_size]
+        batch_tensors = []
+        valid_filenames = []
+        # Load and preprocess this mini-batch
+        for filename in batch_filenames:
+            image_path = os.path.join("uploaded_images", filename)
+            if not os.path.exists(image_path):
+                errors[filename] = {
+                    "filename": filename,
+                    "class": "error",
+                    "confidence": 0.0,
+                    "error": "File not found"
+                }
+                continue
+            try:
+                img = Image.open(image_path).convert('RGB')
+                input_tensor = transform(img).unsqueeze(0)  # (1, 3, 224, 224)
+                batch_tensors.append(input_tensor)
+                valid_filenames.append(filename)
+            except Exception as e:
+                errors[filename] = {
+                    "filename": filename,
+                    "class": "error",
+                    "confidence": 0.0,
+                    "error": str(e)
+                }
+        if batch_tensors:
+            import torch
+            batch_tensor = torch.cat(batch_tensors, dim=0)  # (B, 3, 224, 224)
+            with torch.no_grad():
+                outputs = model(batch_tensor)  # (B, 1000)
+                probabilities = torch.nn.functional.softmax(outputs, dim=1)  # (B, 1000)
+                for i, filename in enumerate(valid_filenames):
+                    probs = probabilities[i]
+                    confidence, predicted_idx = torch.max(probs, 0)
+                    class_label = IMAGENET_LABELS[predicted_idx.item()] if predicted_idx.item() < len(IMAGENET_LABELS) else str(predicted_idx.item())
+                    results.append({
+                        "filename": filename,
+                        "class": class_label,
+                        "confidence": float(confidence.item())
+                    })
+    # Add errors for any failed images
+    for filename in image_files:
+        if filename in errors:
+            results.append(errors[filename])
     return results 

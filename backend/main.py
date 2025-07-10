@@ -8,7 +8,7 @@ from io import BytesIO
 from PIL import Image
 from model import load_model, predict_image, load_openvino_model, predict_batch_openvino, predict_batch_pytorch
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 app = FastAPI()
 
@@ -62,6 +62,7 @@ async def upload_file(file: UploadFile = File(...)):
 
 class BatchPredictionRequest(BaseModel):
     filenames: List[str]
+    batch_size: Optional[int] = 8
 
 @app.post("/predict")
 async def predict(request: BatchPredictionRequest):
@@ -83,7 +84,8 @@ async def predict(request: BatchPredictionRequest):
         )
 
     # Run batch prediction (even for single file)
-    results = predict_batch_pytorch(request.filenames)
+    batch_size = request.batch_size if hasattr(request, 'batch_size') else None
+    results = predict_batch_pytorch(request.filenames, batch_size=batch_size)
     return results
 
 @app.post("/predict_opt_batch")
@@ -105,6 +107,7 @@ async def predict_optimized_batch(request: BatchPredictionRequest):
             content={"error": f"Files not found: {', '.join(missing_files)}"}
         )
     
-    # Run batch prediction
-    results = predict_batch_openvino(request.filenames)
+    # Run batch prediction with configurable batch_size
+    batch_size = request.batch_size if request.batch_size else 8
+    results = predict_batch_openvino(request.filenames, batch_size=batch_size)
     return results 
