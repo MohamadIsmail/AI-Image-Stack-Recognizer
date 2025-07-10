@@ -132,5 +132,41 @@ The frontend communicates with the backend API:
 
 - `POST /upload` - Upload ZIP file containing images
 - `/uploaded_images/{filename}` - Serves static image files that have been uploaded to the backend.
-- `POST /predict` - Run AI inference on a single image (filename provided in request body) using `resnet18` model
-- `POST /predict_opt_batch` - Run AI inference on multiple images (array of filenames provided in request body) using optimized `resnet18` model on the CPU with `OpenVino` runtime library.
+
+**/predict**
+- Endpoint: `POST /predict`
+- Description: Run AI inference on one or more images using the standard PyTorch ResNet18 model (CPU).
+- **This endpoint is provided for experimentation and to compare results and performance before and after model optimization. It is not used by the web app.**
+- Request body (JSON):
+  ```json
+  {
+    "filenames": ["image1.png", "image2.png"]
+  }
+  ```
+  - `filenames`: List of image filenames (from the uploaded stack) to run inference on. Can be a single filename or multiple.
+- Response: List of results for each filename, e.g.
+  ```json
+  [
+    {"filename": "image1.png", "class": "cat", "confidence": 0.98},
+    {"filename": "image2.png", "class": "dog", "confidence": 0.87}
+  ]
+  ```
+
+**/predict_opt_batch**
+- Endpoint: `POST /predict_opt_batch`
+- Description: Run AI inference on multiple images using the optimized ResNet18 model with OpenVINO (CPU).
+- **This is the endpoint used by the web app for all inference requests.**
+- Request body (JSON):
+  ```json
+  {
+    "filenames": ["image1.png", "image2.png"]
+  }
+  ```
+  - `filenames`: List of image filenames (from the uploaded stack) to run inference on. Can be a single filename or multiple.
+- Response: List of results for each filename, e.g.
+  ```json
+  [
+    {"filename": "image1.png", "class": "cat", "confidence": 0.98},
+    {"filename": "image2.png", "class": "dog", "confidence": 0.87}
+  ]
+  ```

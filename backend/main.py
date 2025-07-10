@@ -6,7 +6,7 @@ import os
 import zipfile
 from io import BytesIO
 from PIL import Image
-from model import load_model, predict_image, load_openvino_model, predict_batch_openvino
+from model import load_model, predict_image, load_openvino_model, predict_batch_openvino, predict_batch_pytorch
 from pydantic import BaseModel
 from typing import List
 
@@ -60,18 +60,31 @@ async def upload_file(file: UploadFile = File(...)):
     }
     return metadata
 
-@app.post("/predict")
-async def predict(file: UploadFile = File(...)):
-    """uses PyTorch for CPU inference"""
-    if not (file.filename.lower().endswith('.png') or file.filename.lower().endswith('.jpg') or file.filename.lower().endswith('.jpeg')):
-        return JSONResponse(status_code=400, content={"error": "Only image files (.png, .jpg, .jpeg) are allowed."})
-    
-    contents = await file.read()
-    result = predict_image(contents)
-    return result
-
 class BatchPredictionRequest(BaseModel):
     filenames: List[str]
+
+@app.post("/predict")
+async def predict(request: BatchPredictionRequest):
+    """uses PyTorch for CPU inference (single or batch)"""
+    if not request.filenames:
+        return JSONResponse(status_code=400, content={"error": "No filenames provided."})
+
+    # Validate that all files exist
+    missing_files = []
+    for filename in request.filenames:
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        if not os.path.exists(file_path):
+            missing_files.append(filename)
+
+    if missing_files:
+        return JSONResponse(
+            status_code=400,
+            content={"error": f"Files not found: {', '.join(missing_files)}"}
+        )
+
+    # Run batch prediction (even for single file)
+    results = predict_batch_pytorch(request.filenames)
+    return results
 
 @app.post("/predict_opt_batch")
 async def predict_optimized_batch(request: BatchPredictionRequest):

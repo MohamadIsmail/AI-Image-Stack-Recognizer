@@ -40,7 +40,7 @@ def load_model():
     return model, transform
 
 def load_openvino_model():
-    """onverts the PyTorch ResNet-18 model to OpenVINO format and compiles it for CPU inference"""
+    """converts the PyTorch ResNet-18 model to OpenVINO format and compiles it for CPU inference"""
     global ov_model, ov_compiled_model, ov_transform
     
     # Initialize OpenVINO runtime
@@ -171,4 +171,35 @@ def predict_batch_openvino(image_files):
                 "error": str(e)
             })
     
+    return results 
+
+def predict_batch_pytorch(image_files):
+    """Predict the class and confidence for multiple images using PyTorch (CPU)"""
+    results = []
+    for filename in image_files:
+        try:
+            image_path = os.path.join("uploaded_images", filename)
+            if not os.path.exists(image_path):
+                results.append({
+                    "filename": filename,
+                    "class": "error",
+                    "confidence": 0.0,
+                    "error": "File not found"
+                })
+                continue
+            with open(image_path, "rb") as f:
+                image_bytes = f.read()
+            pred = predict_image(image_bytes)
+            results.append({
+                "filename": filename,
+                "class": pred.get("class_label", "error"),
+                "confidence": pred.get("confidence", 0.0)
+            })
+        except Exception as e:
+            results.append({
+                "filename": filename,
+                "class": "error",
+                "confidence": 0.0,
+                "error": str(e)
+            })
     return results 
