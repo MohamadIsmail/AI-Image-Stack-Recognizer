@@ -61,7 +61,7 @@ function App() {
     setError(null);
 
     try {
-      const response = await axios.post('http://localhost:8000/predict_opt_batch', {
+      const response = await axios.post('http://localhost:8000/predict_optimized', {
         filenames: selectedFilenames
       }, {
         headers: {

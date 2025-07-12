@@ -88,7 +88,7 @@ async def predict(request: BatchPredictionRequest):
     results = predict_batch_pytorch(request.filenames, batch_size=batch_size)
     return results
 
-@app.post("/predict_opt_batch")
+@app.post("/predict_optimized")
 async def predict_optimized_batch(request: BatchPredictionRequest):
     """uses OpenVINO for optimized CPU inference on multiple images"""
     if not request.filenames:

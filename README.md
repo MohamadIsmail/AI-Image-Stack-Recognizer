@@ -154,8 +154,8 @@ The frontend communicates with the backend API:
   ]
   ```
 
-**/predict_opt_batch**
-- Endpoint: `POST /predict_opt_batch`
+**/predict_optimized**
+- Endpoint: `POST /predict_optimized`
 - Description: Run AI inference on multiple images using the optimized ResNet18 model with OpenVINO (CPU).
 - **This is the endpoint used by the web app for all inference requests.**
 - Request body (JSON):
