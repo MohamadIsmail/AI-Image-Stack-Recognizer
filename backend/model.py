@@ -47,15 +47,10 @@ def load_openvino_model():
     core = ov.Core()
     
     # Load the PyTorch model and convert to OpenVINO format
-    if model is None:
-        load_model()
-    
-    # Convert PyTorch model to OpenVINO format
-    dummy_input = torch.randn(1, 3, 224, 224)
-    ov_model = ov.convert_model(model, example_input=dummy_input)
-    
+    model = core.read_model("openvino_model/resnet18_int8.xml")
+
     # Compile the model for CPU
-    ov_compiled_model = core.compile_model(ov_model, device_name="CPU")
+    ov_compiled_model = core.compile_model(model, device_name="CPU")
     
     # Set up image transforms for OpenVINO (same as PyTorch)
     ov_transform = transforms.Compose([
