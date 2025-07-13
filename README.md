@@ -174,3 +174,75 @@ The frontend communicates with the backend API:
     {"filename": "image2.png", "class": "dog", "confidence": 0.87}
   ]
   ```
+  
+## 🔧 Model Optimization: Tools & Steps
+
+To accelerate inference and reduce CPU workload, the ResNet18 model used in this project was optimized using **Post-Training Quantization (PTQ)** and **OpenVINO inference acceleration**.
+
+### 🛠️ Tools Used
+
+- **PyTorch + Torchvision** – Original ResNet18 model  
+- **NNCF (Neural Network Compression Framework)** – For INT8 quantization without retraining  
+- **OpenVINO OVC (Model Optimizer)** – To convert and optimize the ONNX model for Intel CPUs  
+- **OpenVINO Runtime** – For efficient batch inference on CPU  
+
+---
+
+### ⚙️ Optimization Steps
+
+1. **Export Pretrained Model**  
+   - Load `torchvision.models.resnet18(pretrained=True)`  
+   - Save it to ONNX format using `torch.onnx.export()`
+
+2. **Post-Training Quantization (PTQ)**  
+   - Use **NNCF PTQ pipeline** to quantize the ONNX model to INT8 without retraining.  
+   - Calibration performed on ~100–400 images from the actual dataset to maintain accuracy.
+
+3. **Convert to OpenVINO IR (INT8)**  
+   - Use **`ovc`** to convert the quantized ONNX model to OpenVINO IR:  
+     ```bash
+     ovc resnet18_int8.onnx --output_model openvino_model/resnet18_int8.xml --input "input[?,3,224,224]"
+     ```
+   - The `--input` flag enables **dynamic batching**, allowing flexible batch sizes during inference.
+
+4. **Batch Inference with OpenVINO Runtime**  
+   - Integrated OpenVINO runtime in the backend (`model.py`) to run optimized inference on batches of images.
+   - Uses CPU-optimized kernels with vectorization (e.g., Intel VNNI instructions when available).
+
+---
+
+## 🚀 Benchmark Results
+
+| Images | PyTorch FP32 | OpenVINO INT8 | Speedup |
+|---------|--------------|----------------|---------|
+| 50      | 4.344s       | 2.409s         | **1.8× faster** |
+| 100     | 8.265s       | 4.778s         | **1.7× faster** |
+| 200     | 16.6s        | 9.5s           | **1.75× faster** |
+| 400     | 32.1s        | 18.8s          | **1.7× faster** |
+| 600     | 51.5s        | 28.6s          | **1.8× faster** |
+
+---
+
+## 🖥️ Benchmark Environment
+
+The benchmarks were executed on the following machine:
+
+| Spec | Details |
+|------|---------|
+| **CPU** | Intel® Core™ i5-2450M CPU @ 2.50GHz (4 cores / 8 threads) |
+| **RAM** | 8 GB |
+| **OS** | Ubuntu 22.04.5 LTS |
+| **Python** | 3.10.12 |
+| **PyTorch** | 2.7.1 |
+| **OpenVINO** | 2024.6.0 |
+| **NNCF** | 2.17.0 |
+| **Batch Size** | 8 |
+---
+
+### ✅ Outcome
+
+- Reduced inference latency  
+- Lower CPU usage  
+- Maintained model accuracy within acceptable range  
+- Enabled real-time batch processing in the web app
+
