@@ -36,6 +36,12 @@ async def upload_file(file: UploadFile = File(...)):
     if not file.filename.endswith('.zip'):
         return JSONResponse(status_code=400, content={"error": "Only .zip files are allowed."})
 
+    # Clean the uploaded_images folder before extracting new images
+    for f in os.listdir(UPLOAD_DIR):
+        file_path = os.path.join(UPLOAD_DIR, f)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
     # Read the uploaded zip file into memory
     contents = await file.read()
     zip_bytes = BytesIO(contents)
